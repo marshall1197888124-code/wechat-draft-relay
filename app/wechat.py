@@ -29,6 +29,10 @@ _ERR_HINTS = {
     40164: "（调用 IP 不在白名单；非云托管部署需到公众号后台「IP白名单」加本机出口 IP）",
     41001: "（云调用模式：确认已在云托管控制台开启「开放接口服务」开关并重建版本）",
     48001: "（接口未授权；云调用需在「微信令牌」权限配置中加入该接口路径，如 /cgi-bin/draft/add、/cgi-bin/draft/delete）",
+    40007: "（invalid media_id；贴图 image_media_ids 必须是 material/add_material 返回的永久素材 MediaID，不能用 media/uploadimg 的 url）",
+    45002: "（正文超长；图文 content 需 <2 万字符且 <1M）",
+    53404: "（账号已被限制带货能力；如需插商品卡请先删除商品或去掉 product_key）",
+    53406: "（未开通带货能力；去掉 product_key 后重试）",
     85009: "（草稿接口频率受限，稍后重试）",
 }
 
@@ -130,24 +134,47 @@ def upload_image(data: bytes, filename: str = "img.png") -> dict:
 def add_draft(
     title: str,
     content_html: str,
-    thumb_media_id: str,
+    thumb_media_id: str = "",
     author: str = "",
     digest: str = "",
+    article_type: str = "news",
+    image_media_ids: list | None = None,
+    content_source_url: str = "",
+    need_open_comment: int = 1,
+    only_fans_can_comment: int = 0,
+    cover_crop: list | None = None,
+    product_key: str = "",
 ) -> str:
-    """创建草稿，返回 media_id。"""
-    body = {
-        "articles": [
-            {
-                "title": title,
-                "author": author,
-                "digest": digest,
-                "content": content_html,
-                "thumb_media_id": thumb_media_id,
-                "need_open_comment": 1,
-                "only_fans_can_comment": 0,
-            }
-        ]
+    """创建草稿，返回 media_id。
+
+    article_type:
+      news    图文消息（默认），必须给 thumb_media_id（永久 MediaID）
+      newspic 图片消息/贴图，必须给 image_media_ids（永久 MediaID，≤20 张，首张即封面）
+
+    所有可选参数不传时行为与旧版一致（need_open_comment=1、only_fans_can_comment=0）。
+    """
+    article = {
+        "article_type": article_type,
+        "title": title,
+        "author": author,
+        "digest": digest,
+        "content": content_html,
+        "need_open_comment": int(need_open_comment),
+        "only_fans_can_comment": int(only_fans_can_comment),
     }
+    if content_source_url:
+        article["content_source_url"] = content_source_url
+    if article_type == "newspic":
+        # 贴图：图片走 image_info，首张即封面，不需要 thumb_media_id
+        article["image_info"] = {"image_list": [{"image_media_id": m} for m in image_media_ids]}
+    else:
+        article["thumb_media_id"] = thumb_media_id
+    if cover_crop:
+        article["cover_info"] = {"crop_percent_list": cover_crop}
+    if product_key:
+        article["product_info"] = {"footer_product_info": {"product_key": product_key}}
+
+    body = {"articles": [article]}
     data = _request_json(
         _url("/cgi-bin/draft/add", _auth_params()),
         data=json.dumps(body, ensure_ascii=False).encode("utf-8"),

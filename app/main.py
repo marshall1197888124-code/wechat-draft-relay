@@ -21,8 +21,22 @@
   -> {"media_id": "...", "url": "https://mmbiz.qpic.cn/..."}
 
 /draft  JSON: {"title": "...", "content_html": "<section>...</section>",
-               "thumb_media_id": "...", "author": "", "digest": ""}
-  -> {"media_id": "..."}
+               "thumb_media_id": "...", "author": "", "digest": "",
+               "article_type": "news",        # 可选，默认 news；newspic = 贴图
+               "image_media_ids": [],         # newspic 必填，永久 MediaID，≤20 张
+               "content_source_url": "",      # 可选，"阅读原文"链接
+               "need_open_comment": 1,        # 可选，默认 1
+               "only_fans_can_comment": 0,    # 可选，默认 0
+               "cover_crop": [...],           # 可选，封面裁剪 crop_percent_list
+               "product_key": ""}             # 可选，文末商品卡
+  -> {"media_id": "...", "article_type": "news"}
+
+新建草稿（默认图文 news）：
+  POST /draft  {"title":"...","content_html":"...","thumb_media_id":"..."}
+
+新建贴图（newspic，首张图片即封面，image_media_ids 须为永久素材 MediaID）：
+  POST /draft  {"title":"...","content_html":"纯文本","article_type":"newspic",
+                "image_media_ids":["<永久media_id>","..."]}
 
 写接口 + 查询接口都走云调用（开放接口服务）免鉴权。
 个人订阅号实测可用范围：draft/* 全套 + material/*（add/get/batchget/del/count）。
@@ -36,7 +50,7 @@ from urllib.parse import urlparse
 from app import config, wechat
 
 # 版本标记：推到 main 触发云托管重新部署后，可用 GET /health 的 version 字段确认新版本已上线。
-VERSION = "1.0.2"
+VERSION = "1.1.0"
 
 
 def _upload_material(payload: dict) -> dict:
@@ -51,21 +65,45 @@ def _upload_material(payload: dict) -> dict:
 def _create_draft(payload: dict) -> dict:
     title = (payload.get("title") or "").strip()
     html = payload.get("content_html") or ""
-    thumb = payload.get("thumb_media_id") or ""
     if not title:
         raise ValueError("title 不能为空")
     if not html:
         raise ValueError("content_html 不能为空")
-    if not thumb:
-        raise ValueError("thumb_media_id 不能为空")
+
+    article_type = (payload.get("article_type") or "news").strip()
+    if article_type not in ("news", "newspic"):
+        raise ValueError("article_type 只能是 news（图文）或 newspic（贴图）")
+
+    # 贴图：图片列表必填；图文：封面 media_id 必填
+    image_ids: list = []
+    if article_type == "newspic":
+        raw = payload.get("image_media_ids") or []
+        if isinstance(raw, str):
+            raw = [s.strip() for s in raw.split(",") if s.strip()]
+        image_ids = [str(x).strip() for x in raw if str(x).strip()]
+        if not image_ids:
+            raise ValueError("article_type=newspic 时 image_media_ids 不能为空")
+        if len(image_ids) > 20:
+            raise ValueError("image_media_ids 最多 20 张")
+    thumb = (payload.get("thumb_media_id") or "").strip()
+    if article_type == "news" and not thumb:
+        raise ValueError("article_type=news 时 thumb_media_id 不能为空")
+
     media_id = wechat.add_draft(
         title=title,
         content_html=html,
         thumb_media_id=thumb,
         author=payload.get("author") or config.DEFAULT_AUTHOR,
         digest=payload.get("digest") or "",
+        article_type=article_type,
+        image_media_ids=image_ids,
+        content_source_url=(payload.get("content_source_url") or "").strip(),
+        need_open_comment=int(payload.get("need_open_comment", 1)),
+        only_fans_can_comment=int(payload.get("only_fans_can_comment", 0)),
+        cover_crop=payload.get("cover_crop") or None,
+        product_key=(payload.get("product_key") or "").strip(),
     )
-    return {"media_id": media_id}
+    return {"media_id": media_id, "article_type": article_type}
 
 
 def _delete_draft(payload: dict) -> dict:
