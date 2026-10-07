@@ -29,7 +29,7 @@ _ERR_HINTS = {
     40164: "（调用 IP 不在白名单；非云托管部署需到公众号后台「IP白名单」加本机出口 IP）",
     41001: "（云调用模式：确认已在云托管控制台开启「开放接口服务」开关并重建版本）",
     48001: "（接口未授权；云调用需在「微信令牌」权限配置中加入该接口路径，如 /cgi-bin/draft/add、/cgi-bin/draft/delete）",
-    40007: "（invalid media_id；贴图 image_media_ids 必须是 material/add_material 返回的永久素材 MediaID，不能用 media/uploadimg 的 url）",
+    40007: "（invalid media_id；检查 media_id 是否真实存在。注意贴图 image_media_ids 必须是 material/add_material 返回的永久素材 MediaID，不能用 media/uploadimg 的 url）",
     45002: "（正文超长；图文 content 需 <2 万字符且 <1M）",
     53404: "（账号已被限制带货能力；如需插商品卡请先删除商品或去掉 product_key）",
     53406: "（未开通带货能力；去掉 product_key 后重试）",

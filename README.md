@@ -7,7 +7,7 @@
 | 微信接口 | relay 端点 | 说明 |
 | --- | --- | --- |
 | `material/add_material` | `POST /material` | 上传图片素材 |
-| `draft/add` | `POST /draft` | 创建草稿 |
+| `draft/add` | `POST /draft` | 创建草稿（图文 news / 贴图 newspic） |
 | `draft/delete` | `POST /draft-delete` | 删除草稿 |
 | `draft/batchget` | `POST /draft-list` | 草稿列表 |
 | `draft/get` | `POST /draft-get` | 回读单篇草稿 |
@@ -48,8 +48,25 @@
 ### `POST /draft`
 ```json
 { "title": "标题", "content_html": "<section>...</section>", "thumb_media_id": "<封面 media_id>", "author": "可选", "digest": "可选摘要" }
-// → { "media_id": "草稿 media_id" }
+// → { "media_id": "草稿 media_id", "article_type": "news" }
 ```
+
+支持两类文章，`article_type` 不填默认 `news`（与旧版行为完全一致）：
+
+| article_type | 类型 | 必填 | 说明 |
+| --- | --- | --- | --- |
+| `news` | 图文 | `thumb_media_id` | 正文 `content_html` 支持 HTML |
+| `newspic` | 贴图 | `image_media_ids` | 正文只支持纯文本；图片最多 20 张，**首张即封面** |
+
+可选参数（不传即默认值）：`content_source_url`（阅读原文）、`need_open_comment`（默认 1）、`only_fans_can_comment`（默认 0）、`cover_crop`（封面裁剪，`newspic` 支持 `16_9`）、`product_key`（文末商品卡，需带货能力）。
+
+贴图示例：
+```json
+{ "title": "标题", "content_html": "纯文本", "article_type": "newspic",
+  "image_media_ids": ["<永久media_id>", "<永久media_id>"] }
+```
+
+> `image_media_ids` 必须是 `material/add_material` 返回的**永久素材 MediaID**（即 `POST /material` 的 `media_id`），不能用 `media/uploadimg` 的 url。
 
 ### `POST /draft-delete`
 ```json
