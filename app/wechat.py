@@ -8,7 +8,7 @@
   容器内直接以 HTTP 请求 api.weixin.qq.com，平台自动注入鉴权，无需 access_token。
 - token 模式（默认本地 / 非云托管）：
   用 WX_APPID / WX_APPSECRET 换取 access_token，再携带调用接口。
-  "
+"""
 import json
 import time
 import urllib.error
@@ -124,9 +124,8 @@ def upload_image(data: bytes, filename: str = "img.png") -> dict:
     """上传图片到素材库，返回 {'media_id':..., 'url': mmbiz 链接}。"""
     url = _url("/cgi-bin/material/add_material", {"type": "image", **_auth_params()})
     boundary = "wechatrelay" + str(int(time.time() * 1000))
-      _sfx = (filename.rsplit(".", 1)[-1] if "." in filename else "").lower()
     _ctype = {"png": "image/png", "jpg": "image/jpeg", "jpeg": "image/jpeg", "gif": "image/gif", "webp": "image/webp"}.get((filename.rsplit(".", 1)[-1] if "." in filename else "").lower(), "image/jpeg")
-  body, ctype = _multipart_body({"media": (filename, data, _ctype)}, boundary)
+    body, ctype = _multipart_body({"media": (filename, data, _ctype)}, boundary)
     data_json = _request_json(url, data=body, headers={"Content-Type": ctype}, timeout=30)
     if data_json.get("errcode"):
         _raise("素材上传", data_json)
