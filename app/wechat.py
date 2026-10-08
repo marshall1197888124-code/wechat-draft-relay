@@ -8,7 +8,7 @@
   容器内直接以 HTTP 请求 api.weixin.qq.com，平台自动注入鉴权，无需 access_token。
 - token 模式（默认本地 / 非云托管）：
   用 WX_APPID / WX_APPSECRET 换取 access_token，再携带调用接口。
-"""
+  "
 import json
 import time
 import urllib.error
