@@ -44,6 +44,7 @@ markdown -> HTML 的转换在客户端（skill）完成，relay 不碰 markdown�
 """
 import base64
 import json
+import hmac
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import urlparse
 
@@ -175,7 +176,7 @@ class Handler(BaseHTTPRequestHandler):
         path = urlparse(self.path).path
 
         key = self.headers.get("X-API-Key")
-        if config.RELAY_API_KEY and key != config.RELAY_API_KEY:
+        if config.RELAY_API_KEY and not hmac.compare_digest(key or "", config.RELAY_API_KEY):
             self._send_json(401, {"ok": False, "error": "invalid api key"})
             return
 
