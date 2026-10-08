@@ -125,7 +125,7 @@ def upload_image(data: bytes, filename: str = "img.png") -> dict:
     url = _url("/cgi-bin/material/add_material", {"type": "image", **_auth_params()})
     boundary = "wechatrelay" + str(int(time.time() * 1000))
       _sfx = (filename.rsplit(".", 1)[-1] if "." in filename else "").lower()
-    _ctype = {"png": "image/png", "jpg": "image/jpeg", "jpeg": "image/jpeg", "gif": "image/gif", "webp": "image/webp"}.get(_sfx, "image/jpeg")
+    _ctype = {"png": "image/png", "jpg": "image/jpeg", "jpeg": "image/jpeg", "gif": "image/gif", "webp": "image/webp"}.get((filename.rsplit(".", 1)[-1] if "." in filename else "").lower(), "image/jpeg")
   body, ctype = _multipart_body({"media": (filename, data, _ctype)}, boundary)
     data_json = _request_json(url, data=body, headers={"Content-Type": ctype}, timeout=30)
     if data_json.get("errcode"):
