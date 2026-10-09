@@ -5,7 +5,7 @@
 两种鉴权模式：
 - 云调用（开放接口服务）模式（config.WX_CLOUDCALL=True）：
   部署在微信云托管、已开启「开放接口服务」开关并配置接口权限时，
-  容器内读取平台注入的 cloudbase_access_token，以 HTTPS 携带调用 api.weixin.qq.com，无需 access_token。
+  容器内直接以 HTTP 请求 api.weixin.qq.com，平台自动注入鉴权，无需 access_token。
 - token 模式（默认本地 / 非云托管）：
   用 WX_APPID / WX_APPSECRET 换取 access_token，再携带调用接口。
 """
@@ -19,18 +19,9 @@ from . import config
 
 _TOKEN_CACHE: dict = {"token": None, "exp": 0}
 
-# 两种模式都走 HTTPS：云调用模式携带 cloudbase_access_token，token 模式携带 access_token。
-_BASE = "https://api.weixin.qq.com"
-_CLOUDBASE_TOKEN_FILE = "/.tencentcloudbase/wx/cloudbase_access_token"
-
-
-def _cloudbase_token() -> str:
-    """读取云托管注入的 cloudbase_access_token（需开启「开放接口服务」）。"""
-    try:
-        with open(_CLOUDBASE_TOKEN_FILE, encoding="utf-8") as f:
-            return f.read().strip()
-    except OSError:
-        return ""
+# 云调用模式用 HTTP（性能更好，平台侧旁加载会拦截并注入鉴权）；
+# token 模式用 HTTPS 并携带 access_token。
+_BASE = "http://api.weixin.qq.com" if config.WX_CLOUDCALL else "https://api.weixin.qq.com"
 
 # 常见错误码 → 人话提示，方便排障
 _ERR_HINTS = {
@@ -118,12 +109,9 @@ def get_access_token() -> str:
 
 
 def _auth_params() -> dict:
-    """云调用模式返回 cloudbase_access_token；token 模式返回 access_token 查询参数。"""
+    """云调用模式返回空；token 模式返回 access_token 查询参数。"""
     if config.WX_CLOUDCALL:
-        tok = _cloudbase_token()
-        if not tok:
-            raise RuntimeError("云调用模式未读取到 cloudbase_access_token，请确认已开启「开放接口服务」并重建版本")
-        return {"cloudbase_access_token": tok}
+        return {}
     return {"access_token": get_access_token()}
 
 
